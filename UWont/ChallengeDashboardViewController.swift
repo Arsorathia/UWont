@@ -10,17 +10,26 @@ import UIKit
 
 var selectedChallenge:[Any] = []
 
-class ChallengeDashboardViewController: UIViewController,  UICollectionViewDelegateFlowLayout, UICollectionViewDataSource {
+class ChallengeDashboardViewController: UIViewController,  UICollectionViewDelegateFlowLayout, UICollectionViewDataSource, UISearchBarDelegate {
     
     var collectionView: UICollectionView!
     var numberOfChallenges:Int = 1
     var challengesArray = [[String:Any]]()
+    var filteredChallengesArray = [[String:Any]]()
     var createTiles = true
+    
+    var searchActive : Bool = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         loadChallenges()
+        
+        let searchBar = UISearchBar(frame: CGRectMake(100, 150, 200, 50))
+        searchBar.searchBarStyle = UISearchBarStyle.Minimal
+        searchBar.delegate = self
+        searchBar.placeholder = "Search Your Challenges"
+        
         
         //Create background View
         let backgroundView = UIImageView(frame: CGRectMake(0, 0, userScreenWidth, userScreenHeight))
@@ -56,6 +65,7 @@ class ChallengeDashboardViewController: UIViewController,  UICollectionViewDeleg
         collectionView.backgroundColor = UIColor.clearColor()
         self.view.addSubview(collectionView)
         
+        self.view.addSubview(searchBar)
         
 
     }
@@ -72,15 +82,23 @@ class ChallengeDashboardViewController: UIViewController,  UICollectionViewDeleg
     }
     
     func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        let numChallenges = challengesArray.count
-        return numChallenges
+        if(searchActive) {
+            return filteredChallengesArray.count
+        }
+        return challengesArray.count;
     }
     
     func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCellWithReuseIdentifier("Cell", forIndexPath: indexPath) as! ChallengeCell
         cell.backgroundColor = UIColor.orangeColor()
-        if let challengeName = challengesArray[indexPath.row]["name"] {
-            cell.textLabel.text = "\(challengeName)"
+        if var challengeName = challengesArray[indexPath.row]["name"] {
+            if (searchActive){
+                challengeName = filteredChallengesArray[indexPath.row]["name"]!
+                cell.textLabel.text = "\(challengeName)"
+            }else{
+                cell.textLabel.text = "\(challengeName)"
+    
+            }
         }
         
         return cell
@@ -88,11 +106,17 @@ class ChallengeDashboardViewController: UIViewController,  UICollectionViewDeleg
     
     func collectionView(collectionView: UICollectionView, shouldSelectItemAtIndexPath indexPath: NSIndexPath) -> Bool {
         selectedChallenge.removeAll()
-        let clickedChallenge:Any = challengesArray[indexPath.row]
-        selectedChallenge.append(clickedChallenge)
+        if(searchActive) {
+            let clickedChallenge = filteredChallengesArray[indexPath.row]
+            selectedChallenge.append(clickedChallenge)
+        }else {
+            let clickedChallenge = challengesArray[indexPath.row]
+            selectedChallenge.append(clickedChallenge)
+        }
+        
         self.presentViewController(SelectedChallengeViewController(), animated: true, completion: nil)
-        print(indexPath.row)
         return false
+        
         
     }
     
@@ -100,6 +124,51 @@ class ChallengeDashboardViewController: UIViewController,  UICollectionViewDeleg
         
         self.presentViewController(AddChallengeViewController(), animated: true, completion: nil)
 
+    }
+    
+    func searchBarTextDidBeginEditing(searchBar: UISearchBar) {
+        print("Edit Start")
+        searchActive = true;
+    }
+    
+    func searchBarTextDidEndEditing(searchBar: UISearchBar) {
+        print("Edit End")
+        searchActive = false;
+    }
+    
+    func searchBarCancelButtonClicked(searchBar: UISearchBar) {
+        print("Edit Cancel")
+        searchActive = false;
+    }
+    
+    func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+        print("Edit Clicked")
+        searchActive = false;
+    }
+    
+    func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
+        
+
+        filteredChallengesArray = challengesArray.filter {
+            if let name = ($0)["name"] as? String
+            {
+                return name.rangeOfString(searchText, options: .CaseInsensitiveSearch) != nil
+            }else{
+                return false
+            }
+        }
+        
+        if(filteredChallengesArray.count == 0){
+            searchActive = false;
+        } else {
+            searchActive = true;
+        }
+
+        print(filteredChallengesArray)
+        
+        self.collectionView!.reloadData()
+
+        
     }
     
     func loadChallenges() {
